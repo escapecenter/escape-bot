@@ -1,14 +1,11 @@
 from flask import Flask, request, jsonify
 import requests
 import csv
-import openai
 import os
 from io import StringIO
+from openai import OpenAI
 
 app = Flask(__name__)
-
-# הגדרת המפתח של OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # שליפת המידע מהטבלה (Google Sheets)
 def fetch_sheet_data():
@@ -48,7 +45,9 @@ def chat():
 תשובה:"""
 
     try:
-        completion = openai.ChatCompletion.create(
+        client = OpenAI()  # מחלקת הלקוח החדשה
+
+        completion = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "אתה עוזר אדיב שעונה רק מתוך מידע שניתן לך על חדרי בריחה."},
@@ -58,7 +57,7 @@ def chat():
             max_tokens=500
         )
 
-        reply = completion.choices[0].message["content"].strip()
+        reply = completion.choices[0].message.content.strip()
         return jsonify({"response": reply})
 
     except Exception as e:
