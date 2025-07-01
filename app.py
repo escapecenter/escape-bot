@@ -7,7 +7,7 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-# הגדרת לקוח OpenAI לפי המפתח מהסביבה
+# יצירת מופע לקוח OpenAI – בלי proxies!
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # שליפת המידע מהטבלה (Google Sheets)
@@ -19,7 +19,7 @@ def fetch_sheet_data():
     reader = csv.DictReader(csv_data)
     return list(reader)
 
-# הפיכת הטבלה לטקסט שהבוט יבין
+# הפיכת הטבלה לטקסט קריא
 def convert_data_to_text(data):
     text = ""
     for row in data:
@@ -30,7 +30,7 @@ def convert_data_to_text(data):
 
 @app.route('/')
 def index():
-    return "Escape Center Bot with GPT is running!"
+    return "Escape Center Bot is running!"
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -48,21 +48,7 @@ def chat():
 תשובה:"""
 
     try:
-        response = client.chat.completions.create(
+        completion = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "אתה עוזר אדיב שעונה רק מתוך מידע שניתן לך על חדרי בריחה."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=500
-        )
-
-        reply = response.choices[0].message.content.strip()
-        return jsonify({"response": reply})
-
-    except Exception as e:
-        return jsonify({"response": f"שגיאה: {str(e)}"})
-
-if __name__ == '__main__':
-    app.run(debug=True)
