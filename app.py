@@ -1,11 +1,23 @@
 from flask import Flask, request, jsonify
-import json
+import requests
+import openai
+import os
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 
-# טען את המידע מהקובץ
-with open("escape_center_data.json", encoding='utf-8') as f:
-    data = json.load(f)
+# הגדרת מפתח OpenAI מ־Environment Variable
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+
+# קריאת המידע מתוך Google Sheets (CSV)
+def fetch_sheet_data():
+    url = "https://docs.google.com/spreadsheets/d/17e13cqXTMQ0aq6-EUpZmgvOKs0sM6OblxM3Wi1V3-FE/export?format=csv"
+    response = requests.get(url)
+    response.raise_for_status()
+    csv_data = StringIO(response.text)
+    reader = csv.DictReader(csv_data)
+    return list(reader)
 
 @app.route('/')
 def index():
@@ -13,15 +25,31 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_input = request.json.get("message", "").lower()
+    user_input = request.json.get("message", "")
+    sheet_data = fetch_sheet_data()
 
-    # דוגמה פשוטה – עונים לפי מילות מפתח
-    if "מחיר" in user_input:
-        return jsonify({"response": "המחירים משתנים לפי חדר וכמות משתתפים – תוכל לפרט?"})
-    elif "חדר נרקוס" in user_input or "נרקוס" in user_input:
-        return jsonify({"response": data.get("narcos_description", "אין מידע זמין כרגע")})
-    else:
-        return jsonify({"response": "לא מצאתי תשובה מדויקת – מומלץ להתקשר למתחם בטלפון 050-5255144 כדי לקבל מידע מלא."})
+    # בניית הקשר עם כל תוכן הגיליון
+    context = "הנה המידע על כל חדרי הבריחה שלנו:\n"
+    for row in sheet_data:
+        for key, value in row.items():
+            context += f"{key}: {value}\n"
+        context += "\n"
+
+    prompt = f"""אתה נציג שירות חכם של Escape Center. לקוח שאל אותך:
+{user_input}
+
+בהתאם לנתונים שלפניך, תן תשובה מדויקת, מנומסת, מקצועית וללא המצאות.
+
+{context}
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    answer = response['choices'][0]['message']['content']
+    return jsonify({"response": answer})
 
 if __name__ == '__main__':
     app.run(debug=True)
