@@ -7,6 +7,9 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+# הגדרת לקוח OpenAI לפי המפתח מהסביבה
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 # שליפת המידע מהטבלה (Google Sheets)
 def fetch_sheet_data():
     url = "https://docs.google.com/spreadsheets/d/17e13cqXTMQ0aq6-EUpZmgvOKs0sM6OblxM3Wi1V3-FE/export?format=csv"
@@ -45,9 +48,7 @@ def chat():
 תשובה:"""
 
     try:
-        client = OpenAI()  # מחלקת הלקוח החדשה
-
-        completion = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "אתה עוזר אדיב שעונה רק מתוך מידע שניתן לך על חדרי בריחה."},
@@ -57,7 +58,7 @@ def chat():
             max_tokens=500
         )
 
-        reply = completion.choices[0].message.content.strip()
+        reply = response.choices[0].message.content.strip()
         return jsonify({"response": reply})
 
     except Exception as e:
